@@ -15,32 +15,21 @@ def contour_filter(image_id, padding=10):
         return
     
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                   cv2.THRESH_BINARY_INV, 11, 2)
     
-    _, binary = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
+    kernel = np.ones((3,3), np.uint8)  
+    binary = cv2.dilate(binary, kernel, iterations=4) # Dilate to connect characters
     
-    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary, connectivity=8)
     
     output_folder = os.path.join('extracted_characters', image_id)
     clear_folder(output_folder)
     
-    for i, contour in enumerate(contours):
-        x, y, w, h = cv2.boundingRect(contour)
-        
-        # Calculate new bounding box with padding
-        x_padded = max(0, x - padding)
-        y_padded = max(0, y - padding)
-        w_padded = min(image.shape[1] - x_padded, w + 2 * padding)
-        h_padded = min(image.shape[0] - y_padded, h + 2 * padding)
-        
-        cropped_character = image[y_padded:y_padded + h_padded, x_padded:x_padded + w_padded]
-        
-        # Create a blank image with extra whitespace
-        blank_image = np.full((h_padded + 2 * padding, w_padded + 2 * padding, 3), 255, dtype=np.uint8)
-        start_y = padding
-        start_x = padding
-        blank_image[start_y:start_y+h_padded, start_x:start_x+w_padded] = cropped_character
-        
-        # Resize the character to the desired size
-        resized_character = cv2.resize(blank_image, (45, 45))
-        
-        cv2.imwrite(os.path.join(output_folder, f'{i}.png'), resized_character)
+    for i in range(1, num_labels):
+        x, y, w, h, area = stats[i]
+        if area < 100:  # Ignore small contours
+            continue
+        cropped_character = image[y:y+h, x:x+w]
+        cv2.imwrite(os.path.join(output_folder, f'{i}.png'), cropped_character)
+

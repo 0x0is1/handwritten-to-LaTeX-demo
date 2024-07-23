@@ -163,11 +163,10 @@ def get_prediction_status(file_id):
         else:
             return jsonify({'status': -1, 'error': 'Prediction data not found for the file ID'}), 404
 
-@app.route('/model_details', methods=['GET'])
+@app.route("/model_details", methods=['GET'])
 def model_details():
     global model_name
     try:
-        print(f'learner/models/{model_name}.metadata.json')
         with open(f'learner/models/prod_{model_name}.torch.metadata.json', 'r') as f:
             data = json.load(f)
             return jsonify(data)
